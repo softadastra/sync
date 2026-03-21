@@ -1,0 +1,54 @@
+{
+  "name": "sync",
+  "namespace": "softadastra",
+  "version": "0.1.0",
+  "type": "library",
+  "include": "include",
+  "license": "MIT",
+  "description": "Offline-first synchronization engine for Softadastra. Coordinates local and remote operations, conflict resolution, acknowledgements, retry queues, recovery flow, and deterministic state convergence on top of Store and WAL.",
+  "keywords": [
+    "softadastra",
+    "sync",
+    "synchronization",
+    "offline-first",
+    "local-first",
+    "distributed-systems",
+    "replication",
+    "conflict-resolution",
+    "acknowledgement",
+    "retry",
+    "recovery",
+    "outbox",
+    "queue",
+    "convergence",
+    "deterministic",
+    "store",
+    "wal",
+    "eventual-consistency",
+    "reliability",
+    "p2p",
+    "c++",
+    "cpp",
+    "c++20",
+    "systems",
+    "infrastructure",
+    "library"
+  ],
+  "repository": "https://github.com/softadastra/sync",
+  "authors": [
+    {
+      "name": "Gaspard Kirira",
+      "github": "Gaspardkirira"
+    }
+  ],
+  "deps": [
+    {
+      "id": "softadastra/wal",
+      "version": "0.6.0"
+    },
+    {
+      "id": "softadastra/store",
+      "version": "0.6.0"
+    }
+  ]
+}

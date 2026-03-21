@@ -82,24 +82,6 @@ The system must work under:
 * Delays
 * Partial updates
 
----
-
-## Module Structure
-
-```id="s9ncx1"
-modules/sync/
-├── include/softadastra/sync/
-│   ├── SyncEngine.hpp
-│   ├── Operation.hpp
-│   ├── SyncPlanner.hpp
-│   ├── SyncApplier.hpp
-│   ├── Reconciler.hpp
-│   └── PendingQueue.hpp
-└── src/
-```
-
----
-
 ## Core Components
 
 ### Operation
@@ -118,8 +100,6 @@ Includes:
 * Version / sequence
 * Payload
 
----
-
 ### SyncEngine
 
 The main orchestrator.
@@ -130,8 +110,6 @@ Responsible for:
 * Coordinating modules
 * Managing sync state
 
----
-
 ### SyncPlanner
 
 Decides:
@@ -139,8 +117,6 @@ Decides:
 * What operations are missing
 * What needs to be sent
 * What needs to be requested
-
----
 
 ### SyncApplier
 
@@ -150,8 +126,6 @@ Applies incoming operations:
 * Applies changes
 * Ensures idempotency
 
----
-
 ### Reconciler
 
 Handles inconsistencies:
@@ -160,16 +134,12 @@ Handles inconsistencies:
 * Ensures convergence
 * Applies conflict rules (basic in MVP)
 
----
-
 ### PendingQueue
 
 Tracks:
 
 * Operations waiting to be sent
 * Operations waiting to be applied
-
----
 
 ## Example Flow
 
@@ -182,8 +152,6 @@ Tracks:
 5. Planner schedules it for sending
 6. Transport sends it
 
----
-
 ### Remote change
 
 1. Operation received (transport)
@@ -191,8 +159,6 @@ Tracks:
 3. SyncApplier applies it
 4. Store updates file
 5. Metadata updated
-
----
 
 ### Recovery
 
@@ -213,9 +179,7 @@ Tracks:
 * softadastra/metadata
 * softadastra/transport
 * softadastra/store
-* (optional) softadastra/fs
-
----
+* softadastra/fs
 
 ## Guarantees
 
@@ -226,8 +190,6 @@ The sync module ensures:
 * No lost operations
 * Recovery after interruption
 
----
-
 ## Failure Model
 
 Designed to handle:
@@ -237,16 +199,12 @@ Designed to handle:
 * Out-of-order messages
 * Duplicate operations
 
----
-
 ## MVP Scope
 
 * 2 peers
 * LAN only
 * Basic operations
 * Simple conflict strategy (last-write-wins)
-
----
 
 ## Roadmap
 
@@ -257,8 +215,6 @@ Designed to handle:
 * Compression and batching
 * End-to-end encryption
 
----
-
 ## Rules
 
 * Never trust ordering from network
@@ -266,15 +222,11 @@ Designed to handle:
 * Always support replay
 * Always converge
 
----
-
 ## Philosophy
 
 The sync engine is not about speed.
 
 > It is about correctness under failure.
-
----
 
 ## Summary
 
@@ -283,7 +235,12 @@ The sync engine is not about speed.
 * Handles failures
 * Coordinates all modules
 
----
+## Installation
+
+```bash
+vix add @softadastra/sync
+vix deps
+```
 
 ## License
 
