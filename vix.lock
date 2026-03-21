@@ -1,0 +1,37 @@
+{
+  "dependencies": [
+    {
+      "commit": "378cd594bb9810f409a136b82d3773bc01e39995",
+      "hash": "c74701e6d7700cef841a2cc802247e9f2c3e1e3021aebb5891f78bccadafa4dc",
+      "id": "softadastra/store",
+      "repo": "https://github.com/softadastra/store",
+      "tag": "v0.6.0",
+      "version": "0.6.0"
+    },
+    {
+      "commit": "419a08c43e7dc3957abd62699973483a6f731aac",
+      "hash": "a330b89965525addb477de7dba584f795401c0a20bd780f9f3f1867eb33d72c4",
+      "id": "softadastra/wal",
+      "repo": "https://github.com/softadastra/wal",
+      "tag": "v0.6.0",
+      "version": "0.6.0"
+    },
+    {
+      "commit": "c128597f2fef44437f0b9b580d589e83c201ebdf",
+      "hash": "16a40a508bd61cc8021b3023af4b63a7187fbf7a42e543b98698f71054fae763",
+      "id": "softadastra/fs",
+      "repo": "https://github.com/softadastra/fs",
+      "tag": "v1.6.0",
+      "version": "1.6.0"
+    },
+    {
+      "commit": "c3b88b2f48f34f64f5a6d39ed489f773a350ccf7",
+      "hash": "99cabdec5c5fb7e9fb7b46beea76cc4eb4e2bbf67e0c5f04570f6699772ead63",
+      "id": "softadastra/core",
+      "repo": "https://github.com/softadastra/core",
+      "tag": "v1.3.0",
+      "version": "1.3.0"
+    }
+  ],
+  "lockVersion": 1
+}
