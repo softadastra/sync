@@ -9,28 +9,28 @@
       "version": "0.6.0"
     },
     {
-      "commit": "419a08c43e7dc3957abd62699973483a6f731aac",
-      "hash": "a330b89965525addb477de7dba584f795401c0a20bd780f9f3f1867eb33d72c4",
+      "commit": "6a65f39f7e7e4ffd7e539a962a28b09b067dfbcc",
+      "hash": "49b52f2186f5c5078b0da006d5fdf0ca01bc06216d122f52d1b2aee92093183b",
       "id": "softadastra/wal",
       "repo": "https://github.com/softadastra/wal",
-      "tag": "v0.6.0",
-      "version": "0.6.0"
+      "tag": "v0.8.0",
+      "version": "0.8.0"
     },
     {
-      "commit": "c128597f2fef44437f0b9b580d589e83c201ebdf",
-      "hash": "16a40a508bd61cc8021b3023af4b63a7187fbf7a42e543b98698f71054fae763",
+      "commit": "75c87ffdbc9e3e0ad51afce4a4bde7df8faf9da6",
+      "hash": "e06934492c438a9949126a2f78d19c2f168139a86b072661080a1b05f110c692",
       "id": "softadastra/fs",
       "repo": "https://github.com/softadastra/fs",
-      "tag": "v1.6.0",
-      "version": "1.6.0"
+      "tag": "v1.8.0",
+      "version": "1.8.0"
     },
     {
-      "commit": "c3b88b2f48f34f64f5a6d39ed489f773a350ccf7",
-      "hash": "99cabdec5c5fb7e9fb7b46beea76cc4eb4e2bbf67e0c5f04570f6699772ead63",
+      "commit": "ab087d56af5fc585d063e4b0c2dc91a800c06917",
+      "hash": "19f729d37bc333060d28ca6d15dc9e47aa30107562d904e365dd3e0c792e99b4",
       "id": "softadastra/core",
       "repo": "https://github.com/softadastra/core",
-      "tag": "v1.3.0",
-      "version": "1.3.0"
+      "tag": "v1.4.0",
+      "version": "1.4.0"
     }
   ],
   "lockVersion": 1

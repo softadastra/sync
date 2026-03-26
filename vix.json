@@ -1,7 +1,7 @@
 {
   "name": "sync",
   "namespace": "softadastra",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "library",
   "include": "include",
   "license": "MIT",
@@ -42,10 +42,6 @@
     }
   ],
   "deps": [
-    {
-      "id": "softadastra/wal",
-      "version": "0.6.0"
-    },
     {
       "id": "softadastra/store",
       "version": "0.6.0"
