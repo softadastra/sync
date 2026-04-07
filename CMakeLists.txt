@@ -11,8 +11,8 @@ include(GNUInstallDirs)
 # ========================
 # Options
 # ========================
-option(SOFTADASTRA_SYNC_BUILD_TESTS "Build sync tests" ON)
-option(SOFTADASTRA_SYNC_BUILD_EXAMPLES "Build sync examples" ON)
+option(SOFTADASTRA_SYNC_BUILD_TESTS "Build sync tests" OFF)
+option(SOFTADASTRA_SYNC_BUILD_EXAMPLES "Build sync examples" OFF)
 
 # ========================
 # Global settings
@@ -24,8 +24,10 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # ========================
 # Dependencies
 # ========================
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.vix/vix_deps.cmake")
-    include("${CMAKE_CURRENT_SOURCE_DIR}/.vix/vix_deps.cmake")
+if(NOT SOFTADASTRA_UMBRELLA_BUILD)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.vix/vix_deps.cmake")
+        include("${CMAKE_CURRENT_SOURCE_DIR}/.vix/vix_deps.cmake")
+    endif()
 endif()
 
 if(NOT TARGET softadastra::wal AND NOT TARGET softadastra_wal)
@@ -123,8 +125,12 @@ set_target_properties(softadastra_sync PROPERTIES
 # ========================
 # Examples
 # ========================
-if(SOFTADASTRA_SYNC_BUILD_EXAMPLES)
-    add_subdirectory(examples)
+if(SOFTADASTRA_SYNC_BUILD_EXAMPLES AND NOT SOFTADASTRA_UMBRELLA_BUILD)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/examples/CMakeLists.txt")
+        add_subdirectory(examples)
+    else()
+        message(STATUS "[sync] examples/ missing CMakeLists.txt -> skipping")
+    endif()
 endif()
 
 # ========================
@@ -132,7 +138,11 @@ endif()
 # ========================
 if(SOFTADASTRA_SYNC_BUILD_TESTS)
     include(CTest)
-    add_subdirectory(tests)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
+        add_subdirectory(tests)
+    else()
+        message(STATUS "[sync] tests/ missing CMakeLists.txt -> skipping")
+    endif()
 endif()
 
 # ========================
