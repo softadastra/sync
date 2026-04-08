@@ -1,25 +1,30 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(softadastra_sync
-    VERSION 0.1.0
-    DESCRIPTION "Softadastra Sync - Offline-first synchronization engine"
-    LANGUAGES CXX
-)
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    project(softadastra_sync
+        VERSION 0.1.0
+        DESCRIPTION "Softadastra Sync - Offline-first synchronization engine"
+        LANGUAGES CXX
+    )
+endif()
 
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 # ========================
-# Options
+# Standalone fallback options
 # ========================
-option(SOFTADASTRA_SYNC_BUILD_TESTS "Build sync tests" OFF)
+if(NOT DEFINED SOFTADASTRA_WARNINGS_AS_ERRORS)
+    option(SOFTADASTRA_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
+endif()
+
+if(SOFTADASTRA_UMBRELLA_BUILD)
+    set(SOFTADASTRA_SYNC_BUILD_TESTS ${SOFTADASTRA_BUILD_TESTS})
+else()
+    option(SOFTADASTRA_SYNC_BUILD_TESTS "Build sync tests" OFF)
+endif()
+
 option(SOFTADASTRA_SYNC_BUILD_EXAMPLES "Build sync examples" OFF)
-
-# ========================
-# Global settings
-# ========================
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # ========================
 # Dependencies
@@ -108,8 +113,14 @@ target_include_directories(softadastra_sync
 # ========================
 if(MSVC)
     target_compile_options(softadastra_sync PRIVATE /W4 /permissive-)
+    if(SOFTADASTRA_WARNINGS_AS_ERRORS)
+        target_compile_options(softadastra_sync PRIVATE /WX)
+    endif()
 else()
     target_compile_options(softadastra_sync PRIVATE -Wall -Wextra -Wpedantic)
+    if(SOFTADASTRA_WARNINGS_AS_ERRORS)
+        target_compile_options(softadastra_sync PRIVATE -Werror)
+    endif()
 endif()
 
 # ========================
@@ -117,9 +128,52 @@ endif()
 # ========================
 set_target_properties(softadastra_sync PROPERTIES
     OUTPUT_NAME softadastra_sync
-    VERSION ${PROJECT_VERSION}
+    VERSION 0.1.0
     SOVERSION 0
     EXPORT_NAME sync
+)
+
+# ========================
+# Install
+# ========================
+install(
+    TARGETS softadastra_sync
+    EXPORT softadastraSyncTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+install(
+    EXPORT softadastraSyncTargets
+    FILE softadastraSyncTargets.cmake
+    NAMESPACE softadastra::
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/softadastra_sync"
+)
+
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/softadastra_syncConfigVersion.cmake"
+    VERSION 0.1.0
+    COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/softadastra_syncConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/softadastra_syncConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/softadastra_sync"
+)
+
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/softadastra_syncConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/softadastra_syncConfigVersion.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/softadastra_sync"
 )
 
 # ========================
@@ -149,11 +203,13 @@ endif()
 # Summary
 # ========================
 message(STATUS "------------------------------------------------------")
-message(STATUS "softadastra::sync configured (${PROJECT_VERSION})")
+message(STATUS "softadastra::sync configured (0.1.0)")
 message(STATUS "WAL target:      ${SOFTADASTRA_SYNC_WAL_TARGET}")
 message(STATUS "Store target:    ${SOFTADASTRA_SYNC_STORE_TARGET}")
 message(STATUS "Include dir:     ${CMAKE_CURRENT_SOURCE_DIR}/include")
 message(STATUS "Build tests:     ${SOFTADASTRA_SYNC_BUILD_TESTS}")
 message(STATUS "Build examples:  ${SOFTADASTRA_SYNC_BUILD_EXAMPLES}")
+message(STATUS "Warnings=error:  ${SOFTADASTRA_WARNINGS_AS_ERRORS}")
 message(STATUS "Build type:      ${CMAKE_BUILD_TYPE}")
+message(STATUS "Install prefix:  ${CMAKE_INSTALL_PREFIX}")
 message(STATUS "------------------------------------------------------")

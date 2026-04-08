@@ -1,36 +1,36 @@
 {
   "dependencies": [
     {
-      "commit": "15dff4d156421b4f582fe825ab5a576f523af7db",
-      "hash": "02dee345e97415a70a213240c05aa81e79c323f56a8deacffce49cbd97715def",
+      "commit": "c9c7ee8014898a5599b65ecbec21e150b476523f",
+      "hash": "dc32f6813f7f399797cae5adb57ce9a2af6b94d2ed45085a8a8c6fad2cb126a5",
       "id": "softadastra/store",
       "repo": "https://github.com/softadastra/store",
-      "tag": "v0.8.0",
-      "version": "0.8.0"
-    },
-    {
-      "commit": "c5a0989814d1b66769dd008a609bc4461d1f6a0e",
-      "hash": "2ee18ea18ba017a29c42aba18f436c95244f480ad85392827efc2123bd6cca6a",
-      "id": "softadastra/wal",
-      "repo": "https://github.com/softadastra/wal",
       "tag": "v0.9.0",
       "version": "0.9.0"
     },
     {
-      "commit": "0ecba73f32a1710b55cd6d31a846af6866299090",
-      "hash": "3ce04294f19ae36803cd7d1ae2f4434b252018645279e622d02a38ce08bf3117",
-      "id": "softadastra/fs",
-      "repo": "https://github.com/softadastra/fs",
-      "tag": "v1.9.0",
-      "version": "1.9.0"
+      "commit": "cfcc37c3e6e4aec1c268fbcf2a48b994f8cf5f73",
+      "hash": "1531081f4814b4778321e55e74af2a43d99a43f29f6465bf467ef26504b38bb1",
+      "id": "softadastra/wal",
+      "repo": "https://github.com/softadastra/wal",
+      "tag": "v0.10.0",
+      "version": "0.10.0"
     },
     {
-      "commit": "1a79ee04c36be66d9bfd0dd614554305816cf545",
-      "hash": "bc574c1d7b4e2bb391b2a024fcc7d7db8116b75eb79657d7137659b733da4d6e",
+      "commit": "68347d23bae94eb3d11cd77da8732971743fb36d",
+      "hash": "c21b04555036224ec63ff80a77c78cf7017021f14216265f83fdbbbf4fc5f75c",
+      "id": "softadastra/fs",
+      "repo": "https://github.com/softadastra/fs",
+      "tag": "v1.10.0",
+      "version": "1.10.0"
+    },
+    {
+      "commit": "3dadf4809e1712777090a6dfe4c79437f64ca72b",
+      "hash": "2b3777fbf4803b6cefd8066e525f27d0ffcd8d98079e003bdc1e89ee2de40776",
       "id": "softadastra/core",
       "repo": "https://github.com/softadastra/core",
-      "tag": "v1.5.0",
-      "version": "1.5.0"
+      "tag": "v1.6.0",
+      "version": "1.6.0"
     }
   ],
   "lockVersion": 1

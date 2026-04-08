@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(softadastra_wal CONFIG)
+find_dependency(softadastra_store CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/softadastraSyncTargets.cmake")
