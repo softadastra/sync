@@ -1,247 +1,358 @@
 # softadastra/sync
 
-> Deterministic synchronization engine for local-first systems.
+> Local-first synchronization pipeline for Softadastra.
 
-The `sync` module is the **brain of Softadastra**.
+`softadastra/sync` is the orchestration layer that moves durable local operations between nodes.
 
-It is responsible for:
+It is built on top of:
 
-> Converging multiple devices toward the same state, despite failures, disconnections, and unordered events.
+- `softadastra/core`
+- `softadastra/store`
+- `softadastra/wal`
 
----
+The core rule is:
+
+> Persist locally first. Sync later.
 
 ## Purpose
 
-The goal of `softadastra/sync` is simple:
+The sync module coordinates local-first synchronization.
 
-> Take local operations and remote operations, and ensure all peers converge to the same result.
+It helps Softadastra:
 
----
+- submit local operations
+- queue operations for transport
+- track acknowledgements
+- retry timed-out operations
+- apply remote operations
+- resolve conflicts deterministically
+- expose observable sync state
 
-## Core Principle
+The module does not implement network transport directly.
 
-> Order does not matter. Convergence does.
+Transport is provided by higher-level modules or adapters.
 
-The system must produce the same final state:
+## What this module does
 
-* Regardless of operation order
-* Despite network interruptions
-* Across different devices
+`softadastra/sync` provides:
 
----
+- sync operation metadata
+- sync envelopes
+- outbox management
+- deterministic send queue
+- acknowledgement tracking
+- remote operation application
+- conflict resolution policies
+- manual scheduler
+- sync engine orchestration
 
-## Responsibilities
+## What this module does not do
 
-The `sync` module provides:
+This module does not implement:
 
-* Sync planning (what to send / what to receive)
-* Operation comparison
-* Conflict handling (basic in MVP)
-* Application of remote operations
-* Replay coordination with WAL
-* Recovery after disconnection
+- peer discovery
+- sockets
+- HTTP transport
+- P2P transport
+- encryption
+- distributed consensus
+- long-term persistence of outbox state
 
----
+The sync module prepares and tracks operations.
 
-## What this module does NOT do
-
-* No filesystem watching (fs module)
-* No durability (wal module)
-* No network transport (transport module)
-* No raw storage (store module)
-
-👉 It orchestrates everything, but owns no low-level concern.
-
----
+Another layer sends them.
 
 ## Design Principles
 
-### 1. Deterministic convergence
+### Local-first
 
-All peers must reach the same state.
+Local operations are applied to the local store first.
 
----
+The store provides WAL-backed durability before sync.
 
-### 2. Idempotency
+### Transport-agnostic
 
-Applying the same operation multiple times must be safe.
+`SyncEngine` returns batches of `SyncEnvelope`.
 
----
+The caller decides how to send them.
 
-### 3. Replay-driven
+### Deterministic
 
-State is reconstructed from operations, not assumptions.
+Queues are ordered by:
 
----
+```
+version
+timestamp
+sync_id
+```
 
-### 4. Failure-first
+### Observable
 
-The system must work under:
+SyncState exposes queue, outbox, ack, retry, and progress counters.
 
-* Disconnections
-* Delays
-* Partial updates
+### Simple
 
-## Core Components
+The public flow is intentionally small:
 
-### Operation
+```
+submit_local_operation()
+next_batch()
+receive_ack()
+receive_remote_operation()
+retry_expired()
+```
 
-Represents a logical change.
+## Module Structure
 
-Examples:
-
-* File created
-* File updated
-* File deleted
-
-Includes:
-
-* Identifier
-* Version / sequence
-* Payload
-
-### SyncEngine
-
-The main orchestrator.
-
-Responsible for:
-
-* Driving synchronization cycles
-* Coordinating modules
-* Managing sync state
-
-### SyncPlanner
-
-Decides:
-
-* What operations are missing
-* What needs to be sent
-* What needs to be requested
-
-### SyncApplier
-
-Applies incoming operations:
-
-* Validates operations
-* Applies changes
-* Ensures idempotency
-
-### Reconciler
-
-Handles inconsistencies:
-
-* Resolves divergence
-* Ensures convergence
-* Applies conflict rules (basic in MVP)
-
-### PendingQueue
-
-Tracks:
-
-* Operations waiting to be sent
-* Operations waiting to be applied
-
-## Example Flow
-
-### Local change
-
-1. File changes detected (fs)
-2. Operation created
-3. Operation written to WAL
-4. Operation enters sync queue
-5. Planner schedules it for sending
-6. Transport sends it
-
-### Remote change
-
-1. Operation received (transport)
-2. Sync validates it
-3. SyncApplier applies it
-4. Store updates file
-5. Metadata updated
-
-### Recovery
-
-1. Node restarts
-2. WAL is replayed
-3. Sync rebuilds state
-4. Missing operations are requested
-5. System converges
-
----
-
-## Dependencies
-
-### Internal
-
-* softadastra/core
-* softadastra/wal
-* softadastra/metadata
-* softadastra/transport
-* softadastra/store
-* softadastra/fs
-
-## Guarantees
-
-The sync module ensures:
-
-* Eventual consistency
-* Deterministic convergence
-* No lost operations
-* Recovery after interruption
-
-## Failure Model
-
-Designed to handle:
-
-* Offline peers
-* Network partitions
-* Out-of-order messages
-* Duplicate operations
-
-## MVP Scope
-
-* 2 peers
-* LAN only
-* Basic operations
-* Simple conflict strategy (last-write-wins)
-
-## Roadmap
-
-* Multi-peer synchronization
-* Advanced conflict resolution (CRDT / vector clocks)
-* Partial sync (delta transfer)
-* Sync over unreliable networks
-* Compression and batching
-* End-to-end encryption
-
-## Rules
-
-* Never trust ordering from network
-* Never apply without validation
-* Always support replay
-* Always converge
-
-## Philosophy
-
-The sync engine is not about speed.
-
-> It is about correctness under failure.
-
-## Summary
-
-* Orchestrates synchronization
-* Ensures convergence
-* Handles failures
-* Coordinates all modules
+```
+include/softadastra/sync/
+├── ack/
+│   └── AckTracker.hpp
+├── applier/
+│   └── RemoteApplier.hpp
+├── conflict/
+│   └── ConflictResolver.hpp
+├── core/
+│   ├── SyncConfig.hpp
+│   ├── SyncContext.hpp
+│   ├── SyncEnvelope.hpp
+│   ├── SyncOperation.hpp
+│   └── SyncState.hpp
+├── engine/
+│   └── SyncEngine.hpp
+├── outbox/
+│   ├── Outbox.hpp
+│   └── OutboxEntry.hpp
+├── queue/
+│   └── SyncQueue.hpp
+├── scheduler/
+│   └── SyncScheduler.hpp
+├── types/
+│   ├── AckStatus.hpp
+│   ├── ConflictPolicy.hpp
+│   ├── SyncDirection.hpp
+│   └── SyncStatus.hpp
+├── utils/
+│   └── SyncIdGenerator.hpp
+└── Sync.hpp
+```
 
 ## Installation
 
-```bash
+```
 vix add @softadastra/sync
-vix deps
 ```
 
-## License
+## Main Header
 
-See root LICENSE file.
+```cpp
+#include <softadastra/sync/Sync.hpp>
+#include <softadastra/store/Store.hpp>
+```
+
+## Core Concepts
+
+### SyncOperation
+
+```cpp
+auto sync_op = sync::core::SyncOperation::local(
+    "node-a-1",
+    "node-a",
+    1,
+    store_operation);
+```
+
+### SyncEnvelope
+
+```cpp
+sync::core::SyncEnvelope envelope{sync_op};
+envelope.mark_queued();
+envelope.mark_in_flight(true);
+```
+
+### Outbox
+
+```cpp
+sync::outbox::Outbox outbox;
+outbox.push(sync::outbox::OutboxEntry{envelope});
+```
+
+### SyncQueue
+
+```cpp
+sync::queue::SyncQueue queue;
+queue.push(envelope);
+auto next = queue.pop();
+```
+
+### AckTracker
+
+```cpp
+tracker.track("node-a-1", core::time::Duration::from_seconds(10));
+tracker.ack("node-a-1");
+```
+
+### SyncEngine
+
+Main orchestration API.
+
+## Basic Usage
+
+```cpp
+#include <softadastra/store/Store.hpp>
+#include <softadastra/sync/Sync.hpp>
+
+using namespace softadastra;
+
+int main()
+{
+  store::engine::StoreEngine store{
+      store::core::StoreConfig::durable("data/store.wal")};
+
+  auto config =
+      sync::core::SyncConfig::durable("node-a");
+
+  sync::core::SyncContext context{store, config};
+
+  sync::engine::SyncEngine engine{context};
+
+  auto operation = store::core::Operation::put(
+      store::types::Key{"user:1"},
+      store::types::Value::from_string("Gaspard"));
+
+  engine.submit_local_operation(operation);
+
+  auto batch = engine.next_batch();
+
+  return 0;
+}
+```
+
+## Configuration
+
+### Durable
+
+```cpp
+auto config = sync::core::SyncConfig::durable("node-a");
+```
+
+### Fast
+
+```cpp
+auto config = sync::core::SyncConfig::fast("node-a");
+```
+
+## Submit Local Operation
+
+```cpp
+auto submitted = engine.submit_local_operation(operation);
+```
+
+## Get Next Batch
+
+```cpp
+auto batch = engine.next_batch();
+```
+
+## Receive Ack
+
+```cpp
+engine.receive_ack("node-a-1");
+```
+
+## Apply Remote Operation
+
+```cpp
+engine.receive_remote_operation(remote_sync_operation);
+```
+
+## Conflict Resolution
+
+Policies:
+
+- LastWriteWins
+- KeepLocal
+- KeepRemote
+- Manual
+
+## Retry
+
+```cpp
+engine.retry_expired();
+```
+
+## Scheduler
+
+```cpp
+sync::scheduler::SyncScheduler scheduler{engine};
+auto tick = scheduler.tick(true);
+```
+
+## Sync State
+
+```cpp
+const auto &state = engine.state();
+```
+
+## Transport Integration
+
+The sync module does not send data itself.
+
+## Error Handling
+
+```cpp
+if (submitted.is_err())
+{
+  const auto &error = submitted.error();
+}
+```
+
+## Recommended Flow
+
+Local:
+1. Build operation
+2. Submit
+3. WAL persist
+4. Queue
+5. Send
+6. Ack
+
+Remote:
+1. Receive
+2. Validate
+3. Resolve conflict
+4. Apply
+5. Persist
+
+## Production Notes
+
+Use durable config and external transport.
+
+## Design Rules
+
+- Persist locally first
+- Keep transport outside
+- Deterministic behavior
+- Stable sync ids
+- Retry deterministically
+
+## Dependencies
+
+- softadastra/core
+- softadastra/store
+- softadastra/wal
+
+## Roadmap
+
+- Persistent outbox
+- Transport adapters
+- Backoff
+- Metrics
+- Tracing
+
+## Summary
+
+softadastra/sync is the local-first sync orchestration layer.
+
+It moves durable operations between nodes without embedding transport.
+

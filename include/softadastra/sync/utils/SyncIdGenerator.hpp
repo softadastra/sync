@@ -1,5 +1,16 @@
-/*
- * SyncIdGenerator.hpp
+/**
+ *
+ *  @file SyncIdGenerator.hpp
+ *  @author Gaspard Kirira
+ *
+ *  Copyright 2026, Softadastra.
+ *  All rights reserved.
+ *  https://github.com/softadastra/softadastra
+ *
+ *  Licensed under the Apache License, Version 2.0.
+ *
+ *  Softadastra Sync
+ *
  */
 
 #ifndef SOFTADASTRA_SYNC_ID_GENERATOR_HPP
@@ -8,78 +19,179 @@
 #include <atomic>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 namespace softadastra::sync::utils
 {
   /**
-   * @brief Generates unique sync operation identifiers
+   * @brief Thread-safe sync operation identifier generator.
    *
-   * The generated id is deterministic in structure:
+   * SyncIdGenerator creates stable sync identifiers using the format:
    *
-   *   <node_id>-<counter>
+   * @code
+   * <node_id>-<counter>
+   * @endcode
    *
-   * This is sufficient for the current local-first / offline-first
-   * architecture as long as each node_id is unique.
+   * This is suitable for local-first and offline-first systems as long as
+   * each node id is unique.
+   *
+   * It is used by:
+   * - SyncOperation
+   * - SyncEnvelope
+   * - Outbox
+   * - SyncEngine
+   * - diagnostics
+   *
+   * Rules:
+   * - node_id must not be empty.
+   * - counter increases monotonically.
+   * - generated ids are stable strings.
+   * - the generator does not persist the counter by itself.
    */
   class SyncIdGenerator
   {
   public:
     /**
-     * @brief Construct a generator bound to a node id
+     * @brief Underlying counter type.
+     */
+    using value_type = std::uint64_t;
+
+    /**
+     * @brief Creates an empty generator.
+     *
+     * The generator is not valid until a node id is assigned.
+     */
+    SyncIdGenerator() = default;
+
+    /**
+     * @brief Creates a generator bound to a node id.
+     *
+     * @param node_id Unique local node identifier.
      */
     explicit SyncIdGenerator(std::string node_id)
         : node_id_(std::move(node_id))
     {
     }
 
+    SyncIdGenerator(const SyncIdGenerator &) = delete;
+    SyncIdGenerator &operator=(const SyncIdGenerator &) = delete;
+
     /**
-     * @brief Generate the next sync id
+     * @brief Move-constructs a generator.
+     *
+     * The counter value is copied atomically from the source.
      */
-    std::string next()
+    SyncIdGenerator(SyncIdGenerator &&other) noexcept
+        : node_id_(std::move(other.node_id_)),
+          counter_(other.current())
     {
-      const std::uint64_t value = ++counter_;
+    }
+
+    /**
+     * @brief Move-assigns a generator.
+     *
+     * The counter value is copied atomically from the source.
+     */
+    SyncIdGenerator &operator=(SyncIdGenerator &&other) noexcept
+    {
+      if (this != &other)
+      {
+        node_id_ = std::move(other.node_id_);
+        reset(other.current());
+      }
+
+      return *this;
+    }
+
+    /**
+     * @brief Generates the next sync identifier.
+     *
+     * If the generator is invalid, an empty string is returned.
+     *
+     * @return Generated sync id.
+     */
+    [[nodiscard]] std::string next()
+    {
+      if (!is_valid())
+      {
+        return {};
+      }
+
+      const value_type value =
+          counter_.fetch_add(1, std::memory_order_relaxed) + 1;
+
       return node_id_ + "-" + std::to_string(value);
     }
 
     /**
-     * @brief Return the associated node id
+     * @brief Returns the associated node id.
+     *
+     * @return Node id.
      */
-    const std::string &node_id() const noexcept
+    [[nodiscard]] const std::string &node_id() const noexcept
     {
       return node_id_;
     }
 
     /**
-     * @brief Return the current counter value
-     */
-    std::uint64_t current() const noexcept
-    {
-      return counter_.load();
-    }
-
-    /**
-     * @brief Reset the counter
+     * @brief Changes the associated node id.
      *
-     * Mainly useful for tests.
+     * The counter is not reset automatically.
+     *
+     * @param node_id New node id.
      */
-    void reset(std::uint64_t value = 0) noexcept
+    void set_node_id(std::string node_id)
     {
-      counter_.store(value);
+      node_id_ = std::move(node_id);
     }
 
     /**
-     * @brief Check whether the generator is usable
+     * @brief Returns the current counter value.
+     *
+     * @return Current counter.
      */
-    bool valid() const noexcept
+    [[nodiscard]] value_type current() const noexcept
+    {
+      return counter_.load(std::memory_order_relaxed);
+    }
+
+    /**
+     * @brief Sets the current counter value.
+     *
+     * Mainly useful for recovery and tests.
+     *
+     * @param value New counter value.
+     */
+    void reset(value_type value = 0) noexcept
+    {
+      counter_.store(value, std::memory_order_relaxed);
+    }
+
+    /**
+     * @brief Returns true if the generator is usable.
+     *
+     * @return true when node_id is not empty.
+     */
+    [[nodiscard]] bool is_valid() const noexcept
     {
       return !node_id_.empty();
     }
 
+    /**
+     * @brief Returns true if no id has been generated yet.
+     *
+     * @return true when current counter is zero.
+     */
+    [[nodiscard]] bool empty() const noexcept
+    {
+      return current() == 0;
+    }
+
   private:
-    std::string node_id_;
-    std::atomic<std::uint64_t> counter_{0};
+    std::string node_id_{};
+    std::atomic<value_type> counter_{0};
   };
 
 } // namespace softadastra::sync::utils
 
-#endif
+#endif // SOFTADASTRA_SYNC_ID_GENERATOR_HPP

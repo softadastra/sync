@@ -4,6 +4,10 @@ set(SYNC_EXAMPLE_SOURCES
     basic_sync.cpp
     remote_apply.cpp
     retry.cpp
+    manual_queue.cpp
+    scheduler_tick.cpp
+    conflict_policy.cpp
+    ack_tracker.cpp
 )
 
 foreach(example_source IN LISTS SYNC_EXAMPLE_SOURCES)

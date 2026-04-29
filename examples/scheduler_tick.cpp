@@ -1,5 +1,5 @@
 /*
- * basic_sync.cpp
+ * scheduler_tick.cpp
  */
 
 #include <filesystem>
@@ -12,9 +12,9 @@ using namespace softadastra;
 
 int main()
 {
-  std::cout << "== BASIC SYNC EXAMPLE ==\n";
+  std::cout << "== SYNC SCHEDULER TICK EXAMPLE ==\n";
 
-  const std::string wal_path = "basic_sync_store.wal";
+  const std::string wal_path = "scheduler_tick_store.wal";
   std::filesystem::remove(wal_path);
 
   store::engine::StoreEngine store{
@@ -24,45 +24,35 @@ int main()
       sync::core::SyncConfig::durable("node-a");
 
   sync::core::SyncContext context{store, config};
-
-  if (!context.is_valid())
-  {
-    std::cerr << "invalid sync context\n";
-    return 1;
-  }
-
   sync::engine::SyncEngine engine{context};
+  sync::scheduler::SyncScheduler scheduler{engine};
 
   auto operation = store::core::Operation::put(
-      store::types::Key{"user:1"},
-      store::types::Value::from_string("Gaspard"));
+      store::types::Key{"task:1"},
+      store::types::Value::from_string("sync-me"));
 
   auto submitted = engine.submit_local_operation(operation);
 
   if (submitted.is_err())
   {
-    std::cerr << "submit failed: "
-              << submitted.error().message()
-              << "\n";
+    std::cerr << "submit failed\n";
     return 1;
   }
 
-  std::cout << "Submitted sync id: "
-            << submitted.value().sync_id
+  auto tick = scheduler.tick(false);
+
+  std::cout << "Tick batch size: "
+            << tick.batch_size()
             << "\n";
 
-  auto batch = engine.next_batch();
-
-  std::cout << "Batch size: "
-            << batch.size()
+  std::cout << "Tick has work: "
+            << tick.has_work()
             << "\n";
 
-  for (const auto &envelope : batch)
+  for (const auto &envelope : tick.batch)
   {
-    std::cout << "Ready to send: "
+    std::cout << "Transport should send: "
               << envelope.operation.sync_id
-              << " version="
-              << envelope.operation.version
               << "\n";
   }
 

@@ -1,5 +1,5 @@
 /*
- * basic_sync.cpp
+ * manual_queue.cpp
  */
 
 #include <filesystem>
@@ -12,9 +12,9 @@ using namespace softadastra;
 
 int main()
 {
-  std::cout << "== BASIC SYNC EXAMPLE ==\n";
+  std::cout << "== MANUAL QUEUE EXAMPLE ==\n";
 
-  const std::string wal_path = "basic_sync_store.wal";
+  const std::string wal_path = "manual_queue_store.wal";
   std::filesystem::remove(wal_path);
 
   store::engine::StoreEngine store{
@@ -23,32 +23,37 @@ int main()
   auto config =
       sync::core::SyncConfig::durable("node-a");
 
+  config.auto_queue = false;
+
   sync::core::SyncContext context{store, config};
-
-  if (!context.is_valid())
-  {
-    std::cerr << "invalid sync context\n";
-    return 1;
-  }
-
   sync::engine::SyncEngine engine{context};
 
   auto operation = store::core::Operation::put(
-      store::types::Key{"user:1"},
-      store::types::Value::from_string("Gaspard"));
+      store::types::Key{"manual:key"},
+      store::types::Value::from_string("manual-value"));
 
   auto submitted = engine.submit_local_operation(operation);
 
   if (submitted.is_err())
   {
-    std::cerr << "submit failed: "
-              << submitted.error().message()
-              << "\n";
+    std::cerr << "submit failed\n";
     return 1;
   }
 
-  std::cout << "Submitted sync id: "
-            << submitted.value().sync_id
+  std::cout << "Queued before manual queue: "
+            << engine.state().queued_count
+            << "\n";
+
+  const auto &sync_id = submitted.value().sync_id;
+
+  if (!engine.queue_operation(sync_id))
+  {
+    std::cerr << "failed to queue operation\n";
+    return 1;
+  }
+
+  std::cout << "Queued after manual queue: "
+            << engine.state().queued_count
             << "\n";
 
   auto batch = engine.next_batch();
@@ -56,15 +61,6 @@ int main()
   std::cout << "Batch size: "
             << batch.size()
             << "\n";
-
-  for (const auto &envelope : batch)
-  {
-    std::cout << "Ready to send: "
-              << envelope.operation.sync_id
-              << " version="
-              << envelope.operation.version
-              << "\n";
-  }
 
   std::filesystem::remove(wal_path);
 

@@ -1,36 +1,40 @@
 {
   "dependencies": [
     {
-      "commit": "c9c7ee8014898a5599b65ecbec21e150b476523f",
-      "hash": "dc32f6813f7f399797cae5adb57ce9a2af6b94d2ed45085a8a8c6fad2cb126a5",
-      "id": "softadastra/store",
-      "repo": "https://github.com/softadastra/store",
-      "tag": "v0.9.0",
-      "version": "0.9.0"
-    },
-    {
-      "commit": "cfcc37c3e6e4aec1c268fbcf2a48b994f8cf5f73",
-      "hash": "1531081f4814b4778321e55e74af2a43d99a43f29f6465bf467ef26504b38bb1",
-      "id": "softadastra/wal",
-      "repo": "https://github.com/softadastra/wal",
-      "tag": "v0.10.0",
-      "version": "0.10.0"
-    },
-    {
-      "commit": "68347d23bae94eb3d11cd77da8732971743fb36d",
-      "hash": "c21b04555036224ec63ff80a77c78cf7017021f14216265f83fdbbbf4fc5f75c",
-      "id": "softadastra/fs",
-      "repo": "https://github.com/softadastra/fs",
-      "tag": "v1.10.0",
-      "version": "1.10.0"
-    },
-    {
-      "commit": "3dadf4809e1712777090a6dfe4c79437f64ca72b",
-      "hash": "2b3777fbf4803b6cefd8066e525f27d0ffcd8d98079e003bdc1e89ee2de40776",
+      "commit": "2718ab3911fa0970887056cc35837508f63db10a",
+      "hash": "14a224a38472c3c040f2b076c3b865fa222704e3a059e0735ab515f896149b9d",
       "id": "softadastra/core",
       "repo": "https://github.com/softadastra/core",
-      "tag": "v1.6.0",
-      "version": "1.6.0"
+      "requested": "1.7.0",
+      "tag": "v1.7.0",
+      "version": "1.7.0"
+    },
+    {
+      "commit": "e1077a59290cfb334a45d43aafdd0e17b82a08e9",
+      "hash": "adac9132d398e7dcec15a75504f2167ebfc0071f14b9e850db3f8015c03bc86a",
+      "id": "softadastra/fs",
+      "repo": "https://github.com/softadastra/fs",
+      "requested": "1.11.1",
+      "tag": "v1.11.1",
+      "version": "1.11.1"
+    },
+    {
+      "commit": "6637e5e98025625f8e4b00eb625d0f3d7f414049",
+      "hash": "1495b86c83b13480e36be5c9cf46a43b29b4d38b463fb5aaab7a7253b8fa0f1a",
+      "id": "softadastra/store",
+      "repo": "https://github.com/softadastra/store",
+      "requested": "0.11.0",
+      "tag": "v0.11.0",
+      "version": "0.11.0"
+    },
+    {
+      "commit": "ccd04afb1235ec7a2638e1029b45f2936978005b",
+      "hash": "c7d1feb94bdcd37a8839b9e03ad75348ecce20302beba15ee919788899aa6201",
+      "id": "softadastra/wal",
+      "repo": "https://github.com/softadastra/wal",
+      "requested": "1.11.1",
+      "tag": "v1.11.1",
+      "version": "1.11.1"
     }
   ],
   "lockVersion": 1
