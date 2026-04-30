@@ -19,13 +19,13 @@
       "version": "1.11.1"
     },
     {
-      "commit": "6637e5e98025625f8e4b00eb625d0f3d7f414049",
-      "hash": "1495b86c83b13480e36be5c9cf46a43b29b4d38b463fb5aaab7a7253b8fa0f1a",
+      "commit": "9b3d1d6eb4693dc12162467676ca607455d39fda",
+      "hash": "75d28e5c3e7a471f210e2bab5cef0e7481219cb4ee01e88544b055f22db7476b",
       "id": "softadastra/store",
       "repo": "https://github.com/softadastra/store",
-      "requested": "0.11.0",
-      "tag": "v0.11.0",
-      "version": "0.11.0"
+      "requested": "0.11.1",
+      "tag": "v0.11.1",
+      "version": "0.11.1"
     },
     {
       "commit": "ccd04afb1235ec7a2638e1029b45f2936978005b",
