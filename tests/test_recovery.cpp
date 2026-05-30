@@ -3,9 +3,11 @@
  */
 
 #include <cassert>
+#include <cstdint>
 #include <cstdio>
 #include <string>
 
+#include <softadastra/core/Core.hpp>
 #include <softadastra/store/core/Operation.hpp>
 #include <softadastra/store/core/StoreConfig.hpp>
 #include <softadastra/store/engine/StoreEngine.hpp>
@@ -26,12 +28,21 @@ namespace sync_core = softadastra::sync::core;
 namespace sync_engine = softadastra::sync::engine;
 namespace sync_scheduler = softadastra::sync::scheduler;
 namespace sync_types = softadastra::sync::types;
+namespace core_time = softadastra::core::time;
+
+static core_time::Timestamp ts(std::uint64_t millis)
+{
+  return core_time::Timestamp::from_millis(millis);
+}
+
+static core_time::Duration duration(std::uint64_t millis)
+{
+  return core_time::Duration::from_millis(millis);
+}
 
 static store_types::Value make_value(const std::string &text)
 {
-  store_types::Value value;
-  value.data.assign(text.begin(), text.end());
-  return value;
+  return store_types::Value::from_string(text);
 }
 
 static store_core::Operation make_put(
@@ -39,23 +50,22 @@ static store_core::Operation make_put(
     const std::string &value,
     std::uint64_t timestamp)
 {
-  store_core::Operation op;
-  op.type = store_types::OperationType::Put;
-  op.key = store_types::Key{key};
-  op.value = make_value(value);
-  op.timestamp = timestamp;
-  return op;
+  return store_core::Operation(
+      store_types::OperationType::Put,
+      store_types::Key::from(key),
+      make_value(value),
+      ts(timestamp));
 }
 
 static store_core::Operation make_delete(
     const std::string &key,
     std::uint64_t timestamp)
 {
-  store_core::Operation op;
-  op.type = store_types::OperationType::Delete;
-  op.key = store_types::Key{key};
-  op.timestamp = timestamp;
-  return op;
+  return store_core::Operation(
+      store_types::OperationType::Delete,
+      store_types::Key::from(key),
+      store_types::Value{},
+      ts(timestamp));
 }
 
 static sync_core::SyncOperation make_remote_put(
@@ -65,23 +75,24 @@ static sync_core::SyncOperation make_remote_put(
     const std::string &value,
     std::uint64_t timestamp)
 {
-  sync_core::SyncOperation sync_op;
-  sync_op.sync_id = sync_id;
-  sync_op.origin_node_id = origin;
-  sync_op.version = 0;
-  sync_op.timestamp = timestamp + 100;
-  sync_op.direction = sync_types::SyncDirection::RemoteToLocal;
+  auto operation = store_core::Operation(
+      store_types::OperationType::Put,
+      store_types::Key::from(key),
+      make_value(value),
+      ts(timestamp));
 
-  sync_op.op.type = store_types::OperationType::Put;
-  sync_op.op.key = store_types::Key{key};
-  sync_op.op.value = make_value(value);
-  sync_op.op.timestamp = timestamp;
-
-  return sync_op;
+  return sync_core::SyncOperation(
+      sync_id,
+      origin,
+      1,
+      operation,
+      ts(timestamp + 100),
+      sync_types::SyncDirection::RemoteToLocal);
 }
 
-static sync_core::SyncContext make_context(store_engine::StoreEngine &store,
-                                           const std::string &node_id = "node-a")
+static sync_core::SyncContext make_context(
+    store_engine::StoreEngine &store,
+    const std::string &node_id = "node-a")
 {
   static sync_core::SyncConfig config;
 
@@ -89,15 +100,11 @@ static sync_core::SyncContext make_context(store_engine::StoreEngine &store,
   config.batch_size = 10;
   config.require_ack = true;
   config.auto_queue = true;
-  config.ack_timeout_ms = 2000;
-  config.retry_interval_ms = 1000;
+  config.ack_timeout = duration(2000);
+  config.retry_interval = duration(1000);
   config.max_retries = 3;
 
-  sync_core::SyncContext ctx;
-  ctx.store = &store;
-  ctx.config = &config;
-
-  return ctx;
+  return sync_core::SyncContext(store, config);
 }
 
 static void test_store_recovers_local_operations_from_wal()
@@ -117,9 +124,12 @@ static void test_store_recovers_local_operations_from_wal()
     const auto r2 = store.apply_operation(make_put("k2", "beta", 2000));
     const auto r3 = store.apply_operation(make_delete("k1", 3000));
 
-    assert(r1.success);
-    assert(r2.success);
-    assert(r3.success);
+    assert(r1.is_ok());
+    assert(r2.is_ok());
+    assert(r3.is_ok());
+    assert(r1.value().success);
+    assert(r2.value().success);
+    assert(r3.value().success);
   }
 
   {
@@ -130,13 +140,14 @@ static void test_store_recovers_local_operations_from_wal()
 
     store_engine::StoreEngine recovered(cfg);
 
-    const auto k1 = recovered.get(store_types::Key{"k1"});
-    const auto k2 = recovered.get(store_types::Key{"k2"});
+    const auto k1 = recovered.get(store_types::Key::from("k1"));
+    const auto k2 = recovered.get(store_types::Key::from("k2"));
 
     assert(!k1.has_value());
     assert(k2.has_value());
-    assert(k2->timestamp == 2000);
+    assert(k2->timestamp.millis() == 2000);
     assert(k2->value.size() == 4);
+    assert(k2->value.to_string() == "beta");
   }
 
   std::remove(wal_path.c_str());
@@ -157,15 +168,19 @@ static void test_store_recovers_remote_applied_operation_from_wal()
     auto ctx = make_context(store, "node-a");
     sync_engine::SyncEngine engine(ctx);
 
-    const auto remote = make_remote_put("remote-1", "node-b", "rk1", "payload", 4000);
+    const auto remote =
+        make_remote_put("remote-1", "node-b", "rk1", "payload", 4000);
+
     const auto result = engine.receive_remote_operation(remote);
 
-    assert(result.success);
-    assert(result.applied);
+    assert(result.is_ok());
+    assert(result.value().success);
+    assert(result.value().applied);
 
-    const auto entry = store.get(store_types::Key{"rk1"});
+    const auto entry = store.get(store_types::Key::from("rk1"));
     assert(entry.has_value());
-    assert(entry->timestamp == 4000);
+    assert(entry->timestamp.millis() == 4000);
+    assert(entry->value.to_string() == "payload");
   }
 
   {
@@ -176,10 +191,11 @@ static void test_store_recovers_remote_applied_operation_from_wal()
 
     store_engine::StoreEngine recovered(cfg);
 
-    const auto entry = recovered.get(store_types::Key{"rk1"});
+    const auto entry = recovered.get(store_types::Key::from("rk1"));
     assert(entry.has_value());
-    assert(entry->timestamp == 4000);
+    assert(entry->timestamp.millis() == 4000);
     assert(entry->value.size() == 7);
+    assert(entry->value.to_string() == "payload");
   }
 
   std::remove(wal_path.c_str());
@@ -200,8 +216,11 @@ static void test_outbox_is_not_recovered_after_restart_in_v1()
     auto ctx = make_context(store, "node-a");
     sync_engine::SyncEngine engine(ctx);
 
-    auto submitted = engine.submit_local_operation(make_put("k1", "v1", 5000));
-    (void)submitted;
+    auto submitted = engine.submit_local_operation(
+        make_put("k1", "v1", 5000));
+
+    assert(submitted.is_ok());
+    assert(submitted.value().is_valid());
 
     assert(engine.outbox().size() == 1);
     assert(engine.state().outbox_size == 1);
@@ -217,9 +236,10 @@ static void test_outbox_is_not_recovered_after_restart_in_v1()
     auto ctx = make_context(store, "node-a");
     sync_engine::SyncEngine engine(ctx);
 
-    const auto entry = store.get(store_types::Key{"k1"});
+    const auto entry = store.get(store_types::Key::from("k1"));
     assert(entry.has_value());
-    assert(entry->timestamp == 5000);
+    assert(entry->timestamp.millis() == 5000);
+    assert(entry->value.to_string() == "v1");
 
     // V1 behavior: outbox lives only in memory and is empty after restart.
     assert(engine.outbox().size() == 0);
@@ -245,11 +265,15 @@ static void test_scheduler_after_restart_sees_no_pending_sync_entries_in_v1()
     auto ctx = make_context(store, "node-a");
     sync_engine::SyncEngine engine(ctx);
 
-    engine.submit_local_operation(make_put("k1", "v1", 6000));
+    auto submitted = engine.submit_local_operation(
+        make_put("k1", "v1", 6000));
+
+    assert(submitted.is_ok());
+
     auto batch = engine.next_batch();
     assert(batch.size() == 1);
 
-    // Simulate crash before ack
+    // Simulate crash before ack.
   }
 
   {
@@ -270,9 +294,10 @@ static void test_scheduler_after_restart_sees_no_pending_sync_entries_in_v1()
     assert(tick.pruned_count == 0);
     assert(tick.batch.empty());
 
-    const auto entry = store.get(store_types::Key{"k1"});
+    const auto entry = store.get(store_types::Key::from("k1"));
     assert(entry.has_value());
-    assert(entry->timestamp == 6000);
+    assert(entry->timestamp.millis() == 6000);
+    assert(entry->value.to_string() == "v1");
   }
 
   std::remove(wal_path.c_str());

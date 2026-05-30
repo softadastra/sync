@@ -3,8 +3,10 @@
  */
 
 #include <cassert>
+#include <cstdint>
 #include <string>
 
+#include <softadastra/core/Core.hpp>
 #include <softadastra/store/core/Operation.hpp>
 #include <softadastra/store/core/StoreConfig.hpp>
 #include <softadastra/store/engine/StoreEngine.hpp>
@@ -26,11 +28,31 @@ namespace sync_applier = softadastra::sync::applier;
 namespace sync_core = softadastra::sync::core;
 namespace sync_types = softadastra::sync::types;
 
+namespace core_time = softadastra::core::time;
+
+static core_time::Timestamp ts(std::uint64_t millis)
+{
+  return core_time::Timestamp::from_millis(millis);
+}
+
 static store_types::Value make_value(const std::string &text)
 {
-  store_types::Value value;
-  value.data.assign(text.begin(), text.end());
-  return value;
+  return store_types::Value::from_string(text);
+}
+
+static store_core::Operation make_store_operation(
+    const std::string &key,
+    std::uint64_t timestamp,
+    store_types::OperationType type,
+    const std::string &value = "")
+{
+  return store_core::Operation(
+      type,
+      store_types::Key::from(key),
+      type == store_types::OperationType::Put
+          ? make_value(value)
+          : store_types::Value{},
+      ts(timestamp));
 }
 
 static sync_core::SyncOperation make_remote_op(
@@ -41,39 +63,32 @@ static sync_core::SyncOperation make_remote_op(
     store_types::OperationType type,
     const std::string &value = "")
 {
-  sync_core::SyncOperation sync_op;
-  sync_op.sync_id = sync_id;
-  sync_op.origin_node_id = origin;
-  sync_op.version = 0;
-  sync_op.timestamp = timestamp + 100;
-  sync_op.direction = sync_types::SyncDirection::RemoteToLocal;
+  auto operation = make_store_operation(
+      key,
+      timestamp,
+      type,
+      value);
 
-  sync_op.op.type = type;
-  sync_op.op.key = store_types::Key{key};
-  sync_op.op.timestamp = timestamp;
-
-  if (type == store_types::OperationType::Put)
-  {
-    sync_op.op.value = make_value(value);
-  }
-
-  return sync_op;
+  return sync_core::SyncOperation(
+      sync_id,
+      origin,
+      1,
+      operation,
+      ts(timestamp + 100),
+      sync_types::SyncDirection::RemoteToLocal);
 }
 
-static sync_core::SyncContext make_context(store_engine::StoreEngine &store,
-                                           sync_types::ConflictPolicy policy,
-                                           const std::string &node_id = "node-a")
+static sync_core::SyncContext make_context(
+    store_engine::StoreEngine &store,
+    sync_types::ConflictPolicy policy,
+    const std::string &node_id = "node-a")
 {
   static sync_core::SyncConfig config;
 
   config.node_id = node_id;
   config.conflict_policy = policy;
 
-  sync_core::SyncContext ctx;
-  ctx.store = &store;
-  ctx.config = &config;
-
-  return ctx;
+  return sync_core::SyncContext(store, config);
 }
 
 static void test_apply_remote_put_on_empty_store()
@@ -86,20 +101,27 @@ static void test_apply_remote_put_on_empty_store()
   auto ctx = make_context(store, sync_types::ConflictPolicy::LastWriteWins);
   sync_applier::RemoteApplier applier(ctx);
 
-  auto sync_op = make_remote_op("op-1", "node-b", "k1", 1000,
-                                store_types::OperationType::Put,
-                                "hello");
+  auto sync_op = make_remote_op(
+      "op-1",
+      "node-b",
+      "k1",
+      1000,
+      store_types::OperationType::Put,
+      "hello");
+
+  assert(sync_op.is_valid());
 
   auto result = applier.apply_remote(sync_op);
+  assert(result.is_ok());
+  assert(result.value().success);
+  assert(result.value().applied);
+  assert(!result.value().ignored);
 
-  assert(result.success);
-  assert(result.applied);
-  assert(!result.ignored);
-
-  const auto entry = store.get(store_types::Key{"k1"});
+  const auto entry = store.get(store_types::Key::from("k1"));
   assert(entry.has_value());
   assert(entry->value.size() == 5);
-  assert(entry->timestamp == 1000);
+  assert(entry->value.to_string() == "hello");
+  assert(entry->timestamp.millis() == 1000);
 }
 
 static void test_remote_newer_overwrites_local()
@@ -109,28 +131,38 @@ static void test_remote_newer_overwrites_local()
 
   store_engine::StoreEngine store(cfg);
 
-  store_core::Operation local;
-  local.type = store_types::OperationType::Put;
-  local.key = store_types::Key{"k1"};
-  local.value = make_value("old");
-  local.timestamp = 1000;
-  store.apply_operation(local);
+  auto local = make_store_operation(
+      "k1",
+      1000,
+      store_types::OperationType::Put,
+      "old");
+
+  auto applied_local = store.apply_operation(local);
+  assert(applied_local.is_ok());
+  assert(applied_local.value().success);
 
   auto ctx = make_context(store, sync_types::ConflictPolicy::LastWriteWins);
   sync_applier::RemoteApplier applier(ctx);
 
-  auto sync_op = make_remote_op("op-2", "node-b", "k1", 5000,
-                                store_types::OperationType::Put,
-                                "new");
+  auto sync_op = make_remote_op(
+      "op-2",
+      "node-b",
+      "k1",
+      5000,
+      store_types::OperationType::Put,
+      "new");
+
+  assert(sync_op.is_valid());
 
   auto result = applier.apply_remote(sync_op);
+  assert(result.is_ok());
+  assert(result.value().success);
+  assert(result.value().applied);
 
-  assert(result.success);
-  assert(result.applied);
-
-  const auto entry = store.get(store_types::Key{"k1"});
+  const auto entry = store.get(store_types::Key::from("k1"));
   assert(entry.has_value());
-  assert(entry->timestamp == 5000);
+  assert(entry->timestamp.millis() == 5000);
+  assert(entry->value.to_string() == "new");
 }
 
 static void test_remote_older_is_ignored()
@@ -140,28 +172,38 @@ static void test_remote_older_is_ignored()
 
   store_engine::StoreEngine store(cfg);
 
-  store_core::Operation local;
-  local.type = store_types::OperationType::Put;
-  local.key = store_types::Key{"k1"};
-  local.value = make_value("local");
-  local.timestamp = 4000;
-  store.apply_operation(local);
+  auto local = make_store_operation(
+      "k1",
+      4000,
+      store_types::OperationType::Put,
+      "local");
+
+  auto applied_local = store.apply_operation(local);
+  assert(applied_local.is_ok());
+  assert(applied_local.value().success);
 
   auto ctx = make_context(store, sync_types::ConflictPolicy::LastWriteWins);
   sync_applier::RemoteApplier applier(ctx);
 
-  auto sync_op = make_remote_op("op-3", "node-b", "k1", 2000,
-                                store_types::OperationType::Put,
-                                "remote");
+  auto sync_op = make_remote_op(
+      "op-3",
+      "node-b",
+      "k1",
+      2000,
+      store_types::OperationType::Put,
+      "remote");
+
+  assert(sync_op.is_valid());
 
   auto result = applier.apply_remote(sync_op);
+  assert(result.is_ok());
+  assert(result.value().success);
+  assert(result.value().ignored);
 
-  assert(result.success);
-  assert(result.ignored);
-
-  const auto entry = store.get(store_types::Key{"k1"});
+  const auto entry = store.get(store_types::Key::from("k1"));
   assert(entry.has_value());
-  assert(entry->timestamp == 4000);
+  assert(entry->timestamp.millis() == 4000);
+  assert(entry->value.to_string() == "local");
 }
 
 static void test_equal_timestamp_tie_break_remote_wins()
@@ -171,27 +213,41 @@ static void test_equal_timestamp_tie_break_remote_wins()
 
   store_engine::StoreEngine store(cfg);
 
-  store_core::Operation local;
-  local.type = store_types::OperationType::Put;
-  local.key = store_types::Key{"k1"};
-  local.value = make_value("local");
-  local.timestamp = 3000;
-  store.apply_operation(local);
+  auto local = make_store_operation(
+      "k1",
+      3000,
+      store_types::OperationType::Put,
+      "local");
 
-  auto ctx = make_context(store, sync_types::ConflictPolicy::LastWriteWins, "node-a");
+  auto applied_local = store.apply_operation(local);
+  assert(applied_local.is_ok());
+  assert(applied_local.value().success);
+
+  auto ctx = make_context(
+      store,
+      sync_types::ConflictPolicy::LastWriteWins,
+      "node-a");
+
   sync_applier::RemoteApplier applier(ctx);
 
-  auto sync_op = make_remote_op("op-4", "node-b", "k1", 3000,
-                                store_types::OperationType::Put,
-                                "remote");
+  auto sync_op = make_remote_op(
+      "op-4",
+      "node-b",
+      "k1",
+      3000,
+      store_types::OperationType::Put,
+      "remote");
+
+  assert(sync_op.is_valid());
 
   auto result = applier.apply_remote(sync_op);
+  assert(result.is_ok());
+  assert(result.value().applied);
 
-  assert(result.applied);
-
-  const auto entry = store.get(store_types::Key{"k1"});
+  const auto entry = store.get(store_types::Key::from("k1"));
   assert(entry.has_value());
-  assert(entry->timestamp == 3000);
+  assert(entry->timestamp.millis() == 3000);
+  assert(entry->value.to_string() == "remote");
 }
 
 static void test_keep_local_policy_blocks_remote()
@@ -201,27 +257,37 @@ static void test_keep_local_policy_blocks_remote()
 
   store_engine::StoreEngine store(cfg);
 
-  store_core::Operation local;
-  local.type = store_types::OperationType::Put;
-  local.key = store_types::Key{"k1"};
-  local.value = make_value("local");
-  local.timestamp = 5000;
-  store.apply_operation(local);
+  auto local = make_store_operation(
+      "k1",
+      5000,
+      store_types::OperationType::Put,
+      "local");
+
+  auto applied_local = store.apply_operation(local);
+  assert(applied_local.is_ok());
+  assert(applied_local.value().success);
 
   auto ctx = make_context(store, sync_types::ConflictPolicy::KeepLocal);
   sync_applier::RemoteApplier applier(ctx);
 
-  auto sync_op = make_remote_op("op-5", "node-b", "k1", 6000,
-                                store_types::OperationType::Put,
-                                "remote");
+  auto sync_op = make_remote_op(
+      "op-5",
+      "node-b",
+      "k1",
+      6000,
+      store_types::OperationType::Put,
+      "remote");
+
+  assert(sync_op.is_valid());
 
   auto result = applier.apply_remote(sync_op);
+  assert(result.is_ok());
+  assert(result.value().ignored);
 
-  assert(result.ignored);
-
-  const auto entry = store.get(store_types::Key{"k1"});
+  const auto entry = store.get(store_types::Key::from("k1"));
   assert(entry.has_value());
-  assert(entry->timestamp == 5000);
+  assert(entry->timestamp.millis() == 5000);
+  assert(entry->value.to_string() == "local");
 }
 
 static void test_delete_operation_applied()
@@ -231,33 +297,34 @@ static void test_delete_operation_applied()
 
   store_engine::StoreEngine store(cfg);
 
-  store_core::Operation local;
-  local.type = store_types::OperationType::Put;
-  local.key = store_types::Key{"k1"};
-  local.value = make_value("value");
-  local.timestamp = 1000;
-  store.apply_operation(local);
+  auto local = make_store_operation(
+      "k1",
+      1000,
+      store_types::OperationType::Put,
+      "value");
+
+  auto applied_local = store.apply_operation(local);
+  assert(applied_local.is_ok());
+  assert(applied_local.value().success);
+
+  auto remote_delete = make_remote_op(
+      "op-delete-1",
+      "node-b",
+      "k1",
+      5000,
+      store_types::OperationType::Delete);
+
+  assert(remote_delete.is_valid());
 
   auto ctx = make_context(store, sync_types::ConflictPolicy::LastWriteWins);
   sync_applier::RemoteApplier applier(ctx);
 
-  sync_core::SyncOperation remote_delete;
-  remote_delete.sync_id = "op-delete-1";
-  remote_delete.origin_node_id = "node-b";
-  remote_delete.version = 2;
-  remote_delete.timestamp = 5000;
-  remote_delete.direction = sync_types::SyncDirection::RemoteToLocal;
-
-  remote_delete.op.type = store_types::OperationType::Delete;
-  remote_delete.op.key = store_types::Key{"k1"};
-  remote_delete.op.timestamp = 5000;
-
   auto result = applier.apply_remote(remote_delete);
+  assert(result.is_ok());
+  assert(result.value().success);
+  assert(result.value().applied);
 
-  assert(result.success);
-  assert(result.applied);
-
-  const auto entry = store.get(store_types::Key{"k1"});
+  const auto entry = store.get(store_types::Key::from("k1"));
   assert(!entry.has_value());
 }
 

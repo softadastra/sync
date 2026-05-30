@@ -3,9 +3,11 @@
  */
 
 #include <cassert>
+#include <cstdint>
 #include <optional>
 #include <string>
 
+#include <softadastra/core/Core.hpp>
 #include <softadastra/store/core/Entry.hpp>
 #include <softadastra/store/core/Operation.hpp>
 #include <softadastra/store/types/Key.hpp>
@@ -18,12 +20,16 @@ namespace store_core = softadastra::store::core;
 namespace store_types = softadastra::store::types;
 namespace sync_conflict = softadastra::sync::conflict;
 namespace sync_types = softadastra::sync::types;
+namespace core_time = softadastra::core::time;
+
+static core_time::Timestamp ts(std::uint64_t millis)
+{
+  return core_time::Timestamp::from_millis(millis);
+}
 
 static store_types::Value make_value(const std::string &text)
 {
-  store_types::Value value;
-  value.data.assign(text.begin(), text.end());
-  return value;
+  return store_types::Value::from_string(text);
 }
 
 static store_core::Entry make_entry(
@@ -32,21 +38,23 @@ static store_core::Entry make_entry(
     std::uint64_t version = 0)
 {
   store_core::Entry entry;
-  entry.key = store_types::Key{key};
+  entry.key = store_types::Key::from(key);
   entry.value = make_value("local");
-  entry.timestamp = timestamp;
+  entry.timestamp = ts(timestamp);
   entry.version = version;
   return entry;
 }
 
-static store_core::Operation make_operation(const std::string &key,
-                                            std::uint64_t timestamp)
+static store_core::Operation make_operation(
+    const std::string &key,
+    std::uint64_t timestamp)
 {
-  store_core::Operation op;
-  op.type = store_types::OperationType::Put;
-  op.key = store_types::Key{key};
-  op.value = make_value("remote");
-  op.timestamp = timestamp;
+  store_core::Operation op(
+      store_types::OperationType::Put,
+      store_types::Key::from(key),
+      make_value("remote"),
+      ts(timestamp));
+
   return op;
 }
 
@@ -188,10 +196,11 @@ static void test_last_write_wins_equal_timestamp_tie_break_local_wins()
 
 static void test_delete_operation_respects_timestamp()
 {
-  store_core::Operation remote;
-  remote.type = store_types::OperationType::Delete;
-  remote.key = store_types::Key{"k1"};
-  remote.timestamp = 5000;
+  store_core::Operation remote(
+      store_types::OperationType::Delete,
+      store_types::Key::from("k1"),
+      store_types::Value{},
+      ts(5000));
 
   const auto local = make_entry("k1", 4000);
 

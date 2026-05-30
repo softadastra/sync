@@ -3,6 +3,7 @@
  */
 
 #include <cassert>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -17,16 +18,21 @@
 #include <softadastra/sync/types/SyncDirection.hpp>
 #include <softadastra/sync/types/SyncStatus.hpp>
 
+namespace store_core = softadastra::store::core;
 namespace store_types = softadastra::store::types;
 namespace sync_core = softadastra::sync::core;
 namespace sync_queue = softadastra::sync::queue;
 namespace sync_types = softadastra::sync::types;
+namespace core_time = softadastra::core::time;
+
+static core_time::Timestamp ts(std::uint64_t millis)
+{
+  return core_time::Timestamp::from_millis(millis);
+}
 
 static store_types::Value make_value(const std::string &text)
 {
-  store_types::Value value;
-  value.data.assign(text.begin(), text.end());
-  return value;
+  return store_types::Value::from_string(text);
 }
 
 static sync_core::SyncEnvelope make_envelope(
@@ -35,29 +41,30 @@ static sync_core::SyncEnvelope make_envelope(
     std::uint64_t sync_timestamp,
     const std::string &key_suffix)
 {
-  sync_core::SyncOperation op;
-  op.sync_id = sync_id;
-  op.origin_node_id = "node-a";
-  op.version = version;
-  op.timestamp = sync_timestamp;
-  op.direction = sync_types::SyncDirection::LocalToRemote;
+  store_core::Operation store_operation(
+      store_types::OperationType::Put,
+      store_types::Key::from("key-" + key_suffix),
+      make_value("value-" + key_suffix),
+      ts(sync_timestamp - 10));
 
-  op.op.type = store_types::OperationType::Put;
-  op.op.key = store_types::Key{"key-" + key_suffix};
-  op.op.value = make_value("value-" + key_suffix);
-  op.op.timestamp = sync_timestamp - 10;
+  sync_core::SyncOperation op(
+      sync_id,
+      "node-a",
+      version,
+      store_operation,
+      ts(sync_timestamp),
+      sync_types::SyncDirection::LocalToRemote);
 
   sync_core::SyncEnvelope envelope;
   envelope.operation = op;
   envelope.status = sync_types::SyncStatus::Queued;
   envelope.ack_status = sync_types::AckStatus::None;
   envelope.retry_count = 0;
-  envelope.last_attempt_at = 0;
-  envelope.next_retry_at = 0;
+  envelope.last_attempt_at = core_time::Timestamp{};
+  envelope.next_retry_at = core_time::Timestamp{};
 
   return envelope;
 }
-
 static void test_default_queue_is_empty()
 {
   sync_queue::SyncQueue queue;
