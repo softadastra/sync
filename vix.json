@@ -1,7 +1,7 @@
 {
   "name": "sync",
   "namespace": "softadastra",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "type": "library",
   "include": "include",
   "license": "MIT",
