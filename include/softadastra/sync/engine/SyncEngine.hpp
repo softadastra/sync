@@ -112,7 +112,7 @@ namespace softadastra::sync::engine
     /**
      * @brief Move-assigns a sync engine.
      */
-    SyncEngine &operator=(SyncEngine &&) noexcept = default;
+    SyncEngine &operator=(SyncEngine &&) noexcept = delete;
 
     /**
      * @brief Returns the local node identifier.
