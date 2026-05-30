@@ -1,11 +1,11 @@
 {
   "name": "sync",
   "namespace": "softadastra",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "type": "library",
   "include": "include",
   "license": "MIT",
-  "description": "Offline-first synchronization engine for Softadastra. Coordinates local and remote operations, conflict resolution, acknowledgements, retry queues, recovery flow, and deterministic state convergence on top of Store and WAL.",
+  "description": "Offline-first sync primitives for reliable Softadastra convergence, recovery, and retries.",
   "keywords": [
     "softadastra",
     "sync",
@@ -44,7 +44,7 @@
   "deps": [
     {
       "id": "softadastra/store",
-      "version": "0.11.1"
+      "version": "0.12.0"
     }
   ]
 }
